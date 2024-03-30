@@ -1,0 +1,52 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34701.34
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hydash.Server", "hydash\hydash.Server.csproj", "{021670D4-373E-413A-9308-B0279D76D54A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{14CE24AA-4ADE-4476-B356-CC9147D93857} = {14CE24AA-4ADE-4476-B356-CC9147D93857}
+		{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC} = {448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "hydash.Client", "hydash.Client\hydash.Client.csproj", "{40EE7743-3E24-45C2-BB38-49FF685A528B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{021670D4-373E-413A-9308-B0279D76D54A} = {021670D4-373E-413A-9308-B0279D76D54A}
+		{14CE24AA-4ADE-4476-B356-CC9147D93857} = {14CE24AA-4ADE-4476-B356-CC9147D93857}
+		{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC} = {448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "hydash.WebsocketServer", "hydash.WebsocketServer\hydash.WebsocketServer.csproj", "{14CE24AA-4ADE-4476-B356-CC9147D93857}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "hydash.Shared", "hydash.Shared\hydash.Shared.csproj", "{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{021670D4-373E-413A-9308-B0279D76D54A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{021670D4-373E-413A-9308-B0279D76D54A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{021670D4-373E-413A-9308-B0279D76D54A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{021670D4-373E-413A-9308-B0279D76D54A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{40EE7743-3E24-45C2-BB38-49FF685A528B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40EE7743-3E24-45C2-BB38-49FF685A528B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40EE7743-3E24-45C2-BB38-49FF685A528B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40EE7743-3E24-45C2-BB38-49FF685A528B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14CE24AA-4ADE-4476-B356-CC9147D93857}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14CE24AA-4ADE-4476-B356-CC9147D93857}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14CE24AA-4ADE-4476-B356-CC9147D93857}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14CE24AA-4ADE-4476-B356-CC9147D93857}.Release|Any CPU.Build.0 = Release|Any CPU
+		{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {67714F06-FDEC-45E9-A4B6-10F2087DDDEC}
+	EndGlobalSection
+EndGlobal
