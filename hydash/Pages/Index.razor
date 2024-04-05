@@ -1,4 +1,12 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Authorization
 
-<h1>Hello, world!</h1>
-<button onclick="location.href='/swagger'">Swagger</button>
+<h1>HYDASH</h1>
+<p>Hydash is a simple dashboard application built with MudBlazor and .NET 7.</p>
+
+<AuthorizeView>
+	<Authorized>
+		<MudButton Variant="Variant.Filled" Href="/swagger" Color="Color.Warning">Swagger (API)</MudButton>
+	</Authorized>
+</AuthorizeView>
+

@@ -9,16 +9,16 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hydash.Server", "hydash\hyd
 		{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC} = {448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "hydash.Client", "hydash.Client\hydash.Client.csproj", "{40EE7743-3E24-45C2-BB38-49FF685A528B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hydash.Client", "hydash.Client\hydash.Client.csproj", "{40EE7743-3E24-45C2-BB38-49FF685A528B}"
 	ProjectSection(ProjectDependencies) = postProject
 		{021670D4-373E-413A-9308-B0279D76D54A} = {021670D4-373E-413A-9308-B0279D76D54A}
 		{14CE24AA-4ADE-4476-B356-CC9147D93857} = {14CE24AA-4ADE-4476-B356-CC9147D93857}
 		{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC} = {448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "hydash.WebsocketServer", "hydash.WebsocketServer\hydash.WebsocketServer.csproj", "{14CE24AA-4ADE-4476-B356-CC9147D93857}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hydash.WebsocketServer", "hydash.WebsocketServer\hydash.WebsocketServer.csproj", "{14CE24AA-4ADE-4476-B356-CC9147D93857}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "hydash.Shared", "hydash.Shared\hydash.Shared.csproj", "{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "hydash.Shared", "hydash.Shared\hydash.Shared.csproj", "{448F02CA-BB1D-4D51-ADE0-7142A45D5DAC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

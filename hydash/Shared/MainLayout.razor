@@ -1,0 +1,145 @@
+﻿@inherits LayoutComponentBase
+@using System.Security.Claims
+@implements IDisposable
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject SignInManager<IdentityUser> SignInManager
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
+
+<MudThemeProvider @ref="@_mudThemeProvider" @bind-IsDarkMode="@_isDarkMode" Theme="_currentTheme" />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<CascadingAuthenticationState>
+	<MudLayout>
+		<MudAppBar Elevation="1">
+			<MudIconButton Icon="@Icons.Material.Filled.Menu" Edge="Edge.Start" Color="Color.Inherit" OnClick="@ToggleDrawer"/>
+			<MudSpacer></MudSpacer>
+			<MudButton Href="/" FullWidth="false" Size="Size.Large" Variant="Variant.Text" Style="background-color:transparent;font-size:larger">hydash</MudButton>
+			<MudSpacer></MudSpacer>
+			<AuthorizeView>
+				<Authorized>
+					<MudButton Variant="Variant.Filled" Style="border-radius:10px" OnClick="() => Logout()" Color="Color.Error" EndIcon="@Icons.Material.Filled.Logout" Size="Size.Medium">Logout</MudButton>
+				</Authorized>
+				<NotAuthorized>
+					<MudButton Variant="Variant.Filled" Style="border-radius:10px" Href="/login" EndIcon="@Icons.Material.Filled.Login" Size="Size.Medium">Login</MudButton>
+				</NotAuthorized>
+			</AuthorizeView>
+		</MudAppBar>
+		<MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Variant="DrawerVariant.Temporary">
+			<MudNavMenu>
+				<MudNavLink Href="" Icon="@Icons.Material.Filled.Home" Text="Home" Match="NavLinkMatch.All">Home</MudNavLink>
+				<MudNavLink Href="counter" Icon="@Icons.Material.Filled.AddAlert" Text="Counter">Counter</MudNavLink>
+				<MudNavLink Href="fetchdata" Icon="@Icons.Material.Filled.Info" Text="Fetch Data">Fetch Data</MudNavLink>
+			</MudNavMenu>
+		</MudDrawer>
+		<MudMainContent>
+			@Body
+		</MudMainContent>
+	</MudLayout>
+</CascadingAuthenticationState>
+
+@code {
+	private bool _drawerOpen = false;
+	private bool _isDarkMode;
+	private string _changeTheme = Icons.Material.Filled.Brightness4;
+	private MudThemeProvider _mudThemeProvider;
+
+	private string _customColorPink = "#FFC4D1";
+	private string _customColorWhite = "#FFFFFF";
+	private string _customColorBlack = "#181a1b";
+	private string _customColorGrey = "#545455";
+
+	private readonly MudTheme _currentTheme = new()
+	{
+		Palette = new PaletteLight
+		{
+			//Primary = "#16001E",
+			//Secondary = "#6900FF",
+			Info = "#4B59D5",
+			Success = "#4A946A", // Adjusted
+			Warning = "#DAA520", // Adjusted
+			Error = "#9B2C2C", // Adjusted
+			AppbarBackground = "#16001E",
+			AppbarText = "#FFFFFF",
+			//TextPrimary = "#E1D9F0", // Lighter for readability
+			//TextSecondary = "#FFC4D1",
+			//Surface = "#FFFFFF",
+		},
+		PaletteDark = new PaletteDark
+		{
+			//Primary = "#1E1B24", // Slightly different for depth
+			//Secondary = "#6900FF",
+			Info = "#4B59D5",
+			Success = "#4A946A", // Adjusted
+			Warning = "#DAA520", // Adjusted
+			Error = "#9B2C2C", // Adjusted
+			AppbarBackground = "#16001E",
+			AppbarText = "#FFFFFF",
+			//TextPrimary = "#FFC4D1",
+			//TextSecondary = "#E1D9F0", // Adjusted for readability
+			Background = "#181a1b",
+			Black = "#181a1b",
+			//Surface = "#181a1b",
+		}
+	};
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			_isDarkMode = await _mudThemeProvider.GetSystemPreference();
+			await _mudThemeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
+			StateHasChanged();
+		}
+	}
+	private Task OnSystemPreferenceChanged(bool newValue)
+	{
+		_isDarkMode = newValue;
+		StateHasChanged();
+		return Task.CompletedTask;
+	}
+
+	void ThemeToggle()
+	{
+		_isDarkMode = !_isDarkMode;
+		_changeTheme = _isDarkMode ? Icons.Material.Filled.Brightness4 : Icons.Material.Filled.NightsStay;
+	}
+
+	void ToggleDrawer()
+	{
+		_drawerOpen = !_drawerOpen;
+	}
+
+	private async Task Logout()
+	{
+		NavigationManager.NavigateTo("/logout?returnUrl=/", forceLoad: true);
+		var authStateProvider = (HydashAuthStateProvider)AuthenticationStateProvider;
+		authStateProvider.NotifyUserLogout();
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		var authStateProvider = (HydashAuthStateProvider)AuthenticationStateProvider;
+		var state = await authStateProvider.GetAuthenticationStateAsync();
+		var user = state.User;
+		if (user.Identity.IsAuthenticated)
+		{
+			var email = user.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
+			authStateProvider.NotifyUserAuthentication(email);
+		}
+		AuthenticationStateProvider.AuthenticationStateChanged += HandleAuthenticationStateChanged;
+	}
+
+	private async void HandleAuthenticationStateChanged(Task<AuthenticationState> task)
+	{
+		await task;
+		StateHasChanged();
+	}
+
+	public void Dispose()
+	{
+		AuthenticationStateProvider.AuthenticationStateChanged -= HandleAuthenticationStateChanged;
+	}
+}
