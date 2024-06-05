@@ -6,6 +6,7 @@ using System.IO;
 using System.Xml.Linq;
 using hydash.Client;
 using System.Reflection;
+using hydash.Shared.Enums;
 
 /*
 [assembly: AssemblyVersion("1.0")]
@@ -51,7 +52,7 @@ class Program
 		Console.ResetColor();
 		Console.WriteLine("");
 
-		websocket.Websocket.Connect(args);
+		websocket.Websocket.Connect(ConnectionType.Client);
 
 		WritePrefixedLine(PrefixType.Input, "Please provide your API Token from (https://hydash.net/account/token/): ", true);
 		string token = Console.ReadLine();

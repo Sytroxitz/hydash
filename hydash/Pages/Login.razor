@@ -1,0 +1,57 @@
+﻿@page "/login"
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
+@using MudBlazor
+@using System.Security.Claims
+@using hydash.Server.Shared
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-4">
+	<MudText Typo="Typo.h5">Login</MudText>
+	<EditForm Model="@loginModel" OnValidSubmit="LoginUser">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+
+		<MudTextField T="string" Label="Email" @bind-Value="loginModel.Email" Required="true" InputType="InputType.Email" FullWidth />
+		<MudTextField T="string" Label="Password" @bind-Value="loginModel.Password" Required="true" InputType="InputType.Password" FullWidth />
+		<MudCheckBox T="bool" Label="Remember me" @bind-Checked="loginModel.RememberMe" />
+
+		<MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit">Login</MudButton>
+	</EditForm>
+</MudPaper>
+
+@code {
+    private LoginModel loginModel = new LoginModel();
+    private HttpClient Http = new HttpClient();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authStateProvider = (HydashAuthStateProvider)AuthenticationStateProvider;
+        var state = await authStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+		if (user.Identity.IsAuthenticated)
+		{
+			var email = user.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
+			authStateProvider.NotifyUserAuthentication(email);
+			NavigationManager.NavigateTo("/");
+		}
+	}
+
+	private async Task LoginUser()
+	{
+		Uri baseUri = new Uri(NavigationManager.BaseUri);
+		var response = await Http.PostAsJsonAsync(baseUri + "api/v1/accounts/login", loginModel);
+		if (response.IsSuccessStatusCode)
+		{
+			var authStateProvider = (HydashAuthStateProvider)AuthenticationStateProvider;
+			authStateProvider.NotifyUserAuthentication(loginModel.Email);
+			Snackbar.Add("Login successful!", Severity.Success);
+			NavigationManager.NavigateTo("/", forceLoad: false);
+		}
+		else
+		{
+			Snackbar.Add("Login failed.", Severity.Error);
+		}
+	}
+}

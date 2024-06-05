@@ -1,0 +1,51 @@
+﻿@page "/register"
+@using Microsoft.AspNetCore.Components.Forms
+@using MudBlazor
+@using System.ComponentModel.DataAnnotations
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+<MudPaper Class="pa-4">
+	<MudText Typo="Typo.h5">Register</MudText>
+	<EditForm Model="@registrationModel" OnValidSubmit="RegisterUser">
+		<DataAnnotationsValidator />
+		<ValidationSummary />
+        
+		<MudTextField Label="Username" @bind-Value="registrationModel.Username" Required="true" FullWidth />
+		<MudTextField Label="Email" @bind-Value="registrationModel.Email" Required="true" InputType="InputType.Email" FullWidth />
+		<MudTextField Label="Password" @bind-Value="registrationModel.Password" Required="true" InputType="InputType.Password" FullWidth />
+        
+		<MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit">Register</MudButton>
+	</EditForm>
+</MudPaper>
+
+@code {
+	private RegisterModel registrationModel = new RegisterModel();
+	private HttpClient Http = new HttpClient();
+
+	protected override async Task OnInitializedAsync()
+	{
+		var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+		var user = state.User;
+		if (user.Identity.IsAuthenticated)
+		{
+			NavigationManager.NavigateTo("/");
+		}
+	}
+
+	private async Task RegisterUser()
+	{
+		Uri baseUri = new Uri(NavigationManager.BaseUri);
+		var response = await Http.PostAsJsonAsync(baseUri+"api/v1/accounts/register", registrationModel);
+		if (response.IsSuccessStatusCode)
+		{
+			Snackbar.Add("Registration successful!", Severity.Success);
+			NavigationManager.NavigateTo("/login", forceLoad: false);
+		}
+		else
+		{
+			Snackbar.Add("Registration failed.", Severity.Error);
+		}
+	}
+}

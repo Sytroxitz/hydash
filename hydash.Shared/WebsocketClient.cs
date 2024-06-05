@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using hydash.Shared.Enums;
+using System.Net;
 using System.Net.WebSockets;
 using System.Text;
 
@@ -6,8 +7,10 @@ namespace websocket
 {
 	public class Websocket
 	{
-		string publicIp;
-		public static async Task Connect(string[] args)
+		private string publicIp;
+		private static string toSend;
+
+		public static async Task Connect(ConnectionType connectionType)
 		{
 			using (ClientWebSocket client = new ClientWebSocket())
 			{
@@ -15,17 +18,24 @@ namespace websocket
 				await client.ConnectAsync(serverUri, CancellationToken.None);
 				Console.WriteLine("Connected to the server");
 
-				await SendMessages(client);
+				await SendMessages(client, connectionType);
 			}
 		}
 
-		private static async Task SendMessages(ClientWebSocket client)
+		private static async Task SendMessages(ClientWebSocket client, ConnectionType connectionType)
 		{
 			byte[] receiveBuffer = new byte[1024];
 			while (client.State == WebSocketState.Open)
 			{
 				string publicIp = await publicIP();
-				string toSend = "Client (" + publicIp + ") is connected!";
+				if (connectionType == ConnectionType.Client)
+				{
+					toSend = "Client (" + publicIp + ") is connected!";
+				}
+				else
+				{
+					toSend = "Server (HYDASH.Server) is connected!";
+				}
 				byte[] bytesToSend = Encoding.UTF8.GetBytes(toSend);
 				await client.SendAsync(new ArraySegment<byte>(bytesToSend), WebSocketMessageType.Text, true, CancellationToken.None);
 
