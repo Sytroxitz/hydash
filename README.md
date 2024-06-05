@@ -1,4 +1,4 @@
-# Hydash
+# HYDASH
 
 **Hydash** is a free and open-source game server management software, designed to help you manage every file and setting in your game server seamlessly. Currently, it supports Minecraft servers, with plans to expand to other games in the future.
 
