@@ -48,6 +48,7 @@ This project is licensed under the AGPL-3.0 License. See the [LICENSE](LICENSE.t
 ## Acknowledgments
 
 - [Blazor](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor) - for providing the framework to build the UI.
+- [ApexCharts](https://github.com/apexcharts/Blazor-ApexCharts) - charts for the UI.
 
 ## Contact
 
