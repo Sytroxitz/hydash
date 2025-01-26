@@ -1,0 +1,33 @@
+﻿@using hydash.WebApp.Components.Account.Shared
+@using Microsoft.AspNetCore.Components
+@using hydash.WebApp.Data
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using MudBlazor
+
+@page "/test"
+
+@inject IServiceProvider ServiceProvider
+
+@rendermode RenderMode.InteractiveServer
+
+<div style="margin-top:4rem">
+    <MudMenu>
+        <ActivatorContent>
+            <MudAvatar>
+                <MudImage Src="images/toiletvisit.jpg" />
+            </MudAvatar>
+        </ActivatorContent>
+        <ChildContent>
+            <MudMenuItem>Profile</MudMenuItem>
+            <MudMenuItem>Theme</MudMenuItem>
+            <MudMenuItem>Usage</MudMenuItem>
+            <MudMenuItem>Sign Out</MudMenuItem>
+        </ChildContent>
+    </MudMenu>
+</div>
+
+@code {
+
+}
+

@@ -1,0 +1,20 @@
+﻿@inject IDialogService DialogService
+
+@rendermode RenderMode.InteractiveServer
+
+@using hydash.WebApp.Data
+@using hydash.WebApp.Components.Account.Shared
+@using MudBlazor
+
+<MudButton @onclick="OpenDialogAsync" Variant="Variant.Filled" Color="Color.Primary">
+    Change Avatar
+</MudButton>
+
+@code {
+    private Task OpenDialogAsync()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true };
+
+        return DialogService.ShowAsync<AvatarUpload>("Change Avatar", options);
+    }
+}

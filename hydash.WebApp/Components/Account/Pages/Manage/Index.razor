@@ -1,0 +1,147 @@
+﻿@page "/Account/Manage"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using hydash.WebApp.Data
+@using Microsoft.AspNetCore.Components.Forms;
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityUserAccessor UserAccessor
+@inject IdentityRedirectManager RedirectManager
+@inject UserService UserService
+@inject IJSRuntime JSRuntime
+@inject IDialogService DialogService
+
+@using MudBlazor
+
+<MudDialogProvider />
+
+<PageTitle>Profile</PageTitle>
+
+<h3>Profile</h3>
+<StatusMessage />
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (user != null)
+{
+    <div class="row">
+        <div class="col-md-6 d-flex flex-column">
+            <div class="col-md-6 p-4 align-items-center align-content-center align-self-center flex-column d-flex">
+                @if(user.AvatarImage != null && user.AvatarImage.Length > 0)
+                {
+                    <img src="data:image/*;base64,@(Convert.ToBase64String(user.AvatarImage))" alt="User Avatar" style="width: 250px; height: 250px; border-radius:50%; margin-bottom: 10px" />
+                }
+                else
+                {
+                    <img src="/images/default_avatar.png" alt="User Avatar" style="width: 250px; height: 250px; border-radius:50%; margin-bottom: 10px" />
+                }
+                <AvatarDialogOpen />
+            </div>
+            <EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync">
+                <ValidationSummary class="text-danger" role="alert" />
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.UserName" type="text" class="form-control" placeholder="Please choose your username." />
+                    <label for="username" class="form-label">Username</label>
+                    <ValidationMessage For="() => Input.UserName" class="text-danger" />
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.PhoneNumber" class="form-control" placeholder="Please enter your phone number." />
+                    <label for="phone-number" class="form-label">Phone number</label>
+                    <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
+                </div>
+                <button type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+}
+else
+{
+	<p>Unable to load user.</p>
+}
+
+@code {
+    private ApplicationUser user = default!;
+    private string? username;
+    private string? phoneNumber;
+    private bool isLoading = true;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        try
+        {
+            user = await UserAccessor.GetRequiredUserAsync(HttpContext);
+            if(user != null)
+            {
+                username = await UserManager.GetUserNameAsync(user);
+                phoneNumber = await UserManager.GetPhoneNumberAsync(user);
+
+                Input.UserName ??= username;
+                Input.PhoneNumber ??= phoneNumber;
+                Input.AvatarImage = user.AvatarImage;
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        var errors = new List<string>();
+        if (Input.UserName != username)
+        {
+            var setUserNameResult = await UserManager.SetUserNameAsync(user, Input.UserName);
+            if (!setUserNameResult.Succeeded)
+            {
+                errors.Add("Error: Failed to set username.");
+            }
+        }
+
+        if (!string.IsNullOrEmpty(Input.PhoneNumber) && Input.PhoneNumber != phoneNumber)
+        {
+            var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
+            if (!setPhoneResult.Succeeded)
+            {
+                errors.Add("Error: Failed to set phone number.");
+            }
+        }
+
+        if (!errors.Any())
+        {
+            await SignInManager.RefreshSignInAsync(user);
+            RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
+        }
+        else
+        {
+            foreach (var error in errors)
+            {
+                RedirectManager.RedirectToCurrentPageWithStatus(error, HttpContext);
+            }
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Display(Name = "Avatar")]
+        public byte[]? AvatarImage { get; set; }
+        
+        [Display(Name = "Username")]
+        public string? UserName { get; set; }
+
+        [Phone]
+        [Display(Name = "Phone number")]
+        public string? PhoneNumber { get; set; }
+    }
+}

@@ -1,0 +1,67 @@
+﻿@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@using hydash.WebApp.Components.Account
+@using Microsoft.AspNetCore.Components
+@using hydash.WebApp.Data
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+
+@rendermode RenderMode.InteractiveServer
+
+
+@inject IAuthorizationService AuthorizationService
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject UserService UserService
+@inject RoleService RoleService
+
+<MudMenu Color="Color.Inherit" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+    <ActivatorContent>
+        <MudButton>
+            <MudChip T="string" Color="Color.Error" Style="padding-right:0px;">
+                @(user?.UserName)
+                @if (user?.AvatarImage != null && user?.AvatarImage.Length > 0)
+                {
+                    <img src="data:image/*;base64,@(Convert.ToBase64String(user.AvatarImage))" alt="User Avatar" style="width: 40px; height: 40px; border-radius:50%; border: 1px solid white; margin-left: 5px;" />
+                }
+                else
+                {
+                    <img src="/images/default_avatar.png" alt="User Avatar" style="width: 40px; height: 40px; border-radius:50%; border: 2px solid white; margin-left: 5px;" />
+                }
+            </MudChip>
+        </MudButton>
+    </ActivatorContent>
+    <ChildContent>
+        <MudChip T="string" Color="Color.Error" Style="display:flex; justify-content:center;">@(role?.Name)</MudChip>
+        <MudButton StartIcon="@Icons.Material.Outlined.ManageAccounts" style="justify-content:left; padding:15px; width:100%; border-radius: 0%" Href="Account/Manage">
+            Profile
+        </MudButton>
+        <MudButton StartIcon="@Icons.Material.Outlined.Dashboard" style="justify-content:left; padding:15px; width:100%; border-radius: 0%">Dashboard</MudButton>
+        <MudButton StartIcon="@Icons.Material.Outlined.Help" style="justify-content:left; padding:15px; width:100%; border-radius: 0%">Help</MudButton>
+    </ChildContent>
+</MudMenu>
+
+@code {
+    private ApplicationUser? user;
+    private ApplicationRole? role;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var claimsPrincipal = authState.User;
+
+        if (claimsPrincipal.Identity?.IsAuthenticated ?? false)
+        {
+            var userId = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userId != null)
+            {
+                user = await UserService.GetUserAsync(userId);
+                //role = await RoleService.GetUserHighestPriorityRoleAsync(user);
+            }
+        }
+    }
+}

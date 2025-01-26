@@ -1,0 +1,35 @@
+﻿@inherits LayoutComponentBase
+
+@layout NavAppBar
+
+@namespace hydash.WebApp.Components.Layout
+<!--
+
+-->
+
+<MudLayout>
+    <MudDrawer @bind-Open="@_open">
+        <MudDrawerContainer>
+            <NavMenu />
+        </MudDrawerContainer>
+    </MudDrawer>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+@code {
+
+    public bool _open { get; set; } = true;
+
+    void DrawerToggle()
+    {
+        _open = !_open;
+    }
+}

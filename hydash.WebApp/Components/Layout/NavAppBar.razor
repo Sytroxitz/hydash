@@ -1,0 +1,108 @@
+﻿@inherits LayoutComponentBase
+
+@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserManager<ApplicationUser> UserManager
+@inject UserService UserService
+
+@using Microsoft.AspNetCore.Identity
+@using MudBlazor
+@using System.Security.Claims
+@using hydash.WebApp.Data
+@using hydash.WebApp.Components.Layout
+@using hydash.WebApp.Components.Account
+
+<MudThemeProvider Theme="DarkTheme" IsDarkMode="true" @rendermode="InteractiveServer" />
+<MudPopoverProvider @rendermode="InteractiveServer" />
+<MudDialogProvider @rendermode="InteractiveServer" />
+<MudSnackbarProvider @rendermode="InteractiveServer" />
+
+<MudLayout>
+    <MudAppBar style="background-image: linear-gradient(135deg, #dd1173, #350e47);" Fixed="true" Elevation="10">
+        <MudButton Href="/" style="background-color:transparent; color:white; font-size: 1.7rem; font-weight: 600">HYDASH</MudButton>
+        <MudSpacer />
+        <AuthorizeView>
+		    <Authorized>
+				<form action="Account/Logout" method="post">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                    <MudButton Color="Color.Secondary" ButtonType="ButtonType.Submit" StartIcon="@Icons.Material.Filled.ExitToApp">
+                        Logout
+                    </MudButton>
+				</form>
+				<!--<MudButton style="color:white;" Href="Account/Manage">
+                    @context.User.Identity?.Name
+                    @if (user?.AvatarImage != null && user?.AvatarImage.Length > 0)
+                    {
+                        <img src="data:image/*;base64,@(Convert.ToBase64String(user.AvatarImage))" alt="User Avatar" style="width: 40px; height: 40px; border-radius:50%; border: 2px solid white; margin-left: 10px" />
+                    }
+                    else
+                    {
+                        <img src="/images/default_avatar.png" alt="User Avatar" style="width: 30px; height: 30px; border-radius:50%;" />
+                    }
+                </MudButton>-->
+                <UserDropDown />
+            </Authorized>
+            <NotAuthorized>
+                <MudButton Color="Color.Primary" StartIcon="@Icons.Material.Filled.AppRegistration" Href="Account/Register">
+                    Register
+                </MudButton>
+                <MudButton Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Login" Href="Account/Login">
+                    Login
+                </MudButton>
+            </NotAuthorized>
+        </AuthorizeView>
+    </MudAppBar>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+
+@code {
+    private string? currentUrl;
+    private ApplicationUser? user;
+
+    MudTheme DarkTheme = new MudTheme()
+    {
+        PaletteDark = new PaletteDark()
+        {
+            
+        }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var claimsPrincipal = authState.User;
+
+        if (claimsPrincipal.Identity?.IsAuthenticated ?? false)
+        {
+            var userId = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (userId != null)
+            {
+                user = await UserService.GetUserAsync(userId);
+            }
+        }
+
+        NavigationManager.LocationChanged += async (sender, e) => await OnLocationChanged(sender, e);
+    }
+
+    private async Task OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= async (sender, e) => await OnLocationChanged(sender, e);
+    }
+
+}

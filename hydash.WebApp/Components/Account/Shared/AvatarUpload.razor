@@ -1,0 +1,116 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using System.Security.Claims
+@using hydash.WebApp.Data
+
+@using MudBlazor
+
+@rendermode RenderMode.InteractiveServer
+
+@inject IServiceProvider ServiceProvider
+@inject NavigationManager NavigationManager
+@inject UserService UserService
+
+<MudDialog>
+    <DialogContent>
+        <p>Upload files up to 5MB.</p>
+        <div class="form-floating mb-3">
+            <label asp-for="User.AvatarImage" style="width: 100%;"></label>
+            @if (User?.AvatarImage?.Length > 0)
+            {
+                <img src="data:image/*;base64,@(Convert.ToBase64String(User.AvatarImage))" alt="User Avatar" style="width: 150px; height: 150px; border-radius:50%;" />
+            }
+            else
+            {
+                <img src="/images/default_avatar.png" alt="User Avatar" style="width: 150px; height: 150px; border-radius:50%" />
+            }
+            <!--<InputFile OnChange="@HandleFile" style="padding: 10px" />-->
+            <MudFileUpload T="IBrowserFile" Accept=".png, .jpg" OnFilesChanged="HandleFile" MaximumFileCount="1">
+                <ActivatorContent>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.CloudUpload">
+                        Upload Avatar
+                    </MudButton>
+                </ActivatorContent>
+            </MudFileUpload>
+            <p class="text-danger">@(InputValidationMessage)</p>
+            <span asp-validation-for="User.AvatarImage" class="text-danger"></span>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public ApplicationUser User { get; set; } = default!;
+
+    public UserManager<ApplicationUser> userManager { get; set; } = default!;
+
+    private byte[] Avatar;
+    private string InputValidationMessage;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    const int MAX_FILESIZE = 5000 * 1024; //5 MB
+
+    [CascadingParameter]
+    private MudDialogInstance MudDialog { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var scope = ServiceProvider.CreateAsyncScope();
+        userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+        var principal = (await AuthenticationState).User;
+        User = await userManager.GetUserAsync(principal) ?? throw new Exception("Could not reload user!");
+    }
+
+    private async Task HandleFile(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+            if (file != null && file.Size > MAX_FILESIZE)
+            {
+                InputValidationMessage = "File size exceeds the maximum limit of 5MB.";
+                return;
+            }
+            using var memoryStream = new MemoryStream();
+            await file.OpenReadStream(MAX_FILESIZE).CopyToAsync(memoryStream);
+            Avatar = memoryStream.ToArray();
+            User.AvatarImage = Avatar;
+        }
+        catch (Exception ex)
+        {
+            InputValidationMessage = $"Error processing file: {ex.Message}";
+        }
+    }
+
+    private async Task Submit()
+    {
+        await using var scope = ServiceProvider.CreateAsyncScope();
+        userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var principal = (await AuthenticationState).User;
+        User = await userManager.GetUserAsync(principal) ?? throw new Exception("Could not reload user!");
+        User.AvatarImage = Avatar;
+        var result = await userManager.UpdateAsync(User);
+        if(result.Succeeded)
+        {
+            var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            UserService.InvalidateUserCache(userId);
+            MudDialog.Close(DialogResult.Ok(true));
+            NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+        }
+        else
+        {
+            InputValidationMessage = string.Join("; ", result.Errors.Select(e => e.Description));
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}
