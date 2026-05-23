@@ -1,20 +1,39 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-@layout NavAppBar
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject UserService UserService
 
-@namespace hydash.WebApp.Components.Layout
-<!--
+@using Microsoft.AspNetCore.Identity
+@using System.Security.Claims
+@using hydash.WebApp.Data
+@using hydash.WebApp.Components.Account
 
--->
+<MudThemeProvider Theme="_theme" IsDarkMode="true" @rendermode="InteractiveServer" />
+<MudPopoverProvider @rendermode="InteractiveServer" />
+<MudDialogProvider @rendermode="InteractiveServer" />
+<MudSnackbarProvider @rendermode="InteractiveServer" />
 
 <MudLayout>
-    <MudDrawer @bind-Open="@_open">
-        <MudDrawerContainer>
-            <NavMenu />
-        </MudDrawerContainer>
+    <MudAppBar Elevation="1" Style="background-image: linear-gradient(135deg, #dd1173, #350e47);" Fixed="true">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="DrawerToggle" />
+        <MudButton Href="/" Style="color:white; font-size:1.4rem; font-weight:600; text-transform:none;">HYDASH</MudButton>
+        <MudText Typo="Typo.subtitle1" Style="color:rgba(255,255,255,0.55); margin-left:6px; margin-top:2px;">Admin</MudText>
+        <MudSpacer />
+        <UserDropDown />
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" Elevation="2" Variant="DrawerVariant.Responsive" ClipMode="DrawerClipMode.Always">
+        <MudDrawerHeader>
+            <MudText Typo="Typo.h6" Style="font-weight:600;">Admin Panel</MudText>
+        </MudDrawerHeader>
+        <AdminNavMenu />
     </MudDrawer>
+
     <MudMainContent>
-        @Body
+        <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="pa-6">
+            @Body
+        </MudContainer>
     </MudMainContent>
 </MudLayout>
 
@@ -25,11 +44,8 @@
 </div>
 
 @code {
+    private bool _drawerOpen = true;
+    private MudTheme _theme = new MudTheme();
 
-    public bool _open { get; set; } = true;
-
-    void DrawerToggle()
-    {
-        _open = !_open;
-    }
+    void DrawerToggle() => _drawerOpen = !_drawerOpen;
 }
