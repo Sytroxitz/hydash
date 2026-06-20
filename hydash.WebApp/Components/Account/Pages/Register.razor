@@ -17,15 +17,17 @@
 
 <PageTitle>Register</PageTitle>
 
-<h1>Register</h1>
+<div class="auth-page">
+    <div class="auth-card hy-glass">
+        <div class="auth-head">
+            <span class="hy-brand-text">HYDASH</span>
+            <h1 class="auth-title">Create your account</h1>
+            <p class="auth-sub">Start managing your game servers in minutes.</p>
+        </div>
 
-<div class="row">
-    <div class="col-md-4">
         <StatusMessage Message="@Message" />
         <EditForm Model="Input" asp-route-returnUrl="@ReturnUrl" method="post" OnValidSubmit="RegisterUser" FormName="register">
             <DataAnnotationsValidator />
-            <h2>Create a new account.</h2>
-            <hr />
             <ValidationSummary class="text-danger" role="alert" />
             <div class="form-floating mb-3">
                 <InputText @bind-Value="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
@@ -43,14 +45,14 @@
                 <ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" />
             </div>
             <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
+
+            <div class="auth-links">
+                <a href="Account/Login">Already have an account? Sign in</a>
+            </div>
         </EditForm>
-    </div>
-    <div class="col-md-6 col-md-offset-2">
-        <section>
-            <h3>Use another service to register.</h3>
-            <hr />
-            <ExternalLoginPicker />
-        </section>
+
+        <div class="auth-divider"><span>or continue with</span></div>
+        <ExternalLoginPicker />
     </div>
 </div>
 
