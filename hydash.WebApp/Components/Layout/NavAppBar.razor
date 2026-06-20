@@ -14,44 +14,37 @@
 @using hydash.WebApp.Data
 @using hydash.WebApp.Components.Layout
 @using hydash.WebApp.Components.Account
+@using hydash.WebApp.Theme
 
-<MudThemeProvider Theme="DarkTheme" IsDarkMode="true" @rendermode="InteractiveServer" />
+<MudThemeProvider Theme="HydashTheme.Default" IsDarkMode="true" @rendermode="InteractiveServer" />
 <MudPopoverProvider @rendermode="InteractiveServer" />
 <MudDialogProvider @rendermode="InteractiveServer" />
 <MudSnackbarProvider @rendermode="InteractiveServer" />
 
 <MudLayout>
-    <MudAppBar style="background-image: linear-gradient(135deg, #dd1173, #350e47);" Fixed="true" Elevation="10">
-        <MudButton Href="/" style="background-color:transparent; color:white; font-size: 1.7rem; font-weight: 600">HYDASH</MudButton>
+    <MudAppBar Class="hy-appbar" Fixed="true" Elevation="0">
+        <MudButton Href="/" Class="hy-brand" DisableElevation="true" DisableRipple="false">
+            <span class="hy-brand-dot"></span>
+            <span class="hy-brand-text">HYDASH</span>
+        </MudButton>
         <MudSpacer />
         <AuthorizeView>
 		    <Authorized>
-				<form action="Account/Logout" method="post">
+                <UserDropDown />
+                @* Statically-rendered logout form so AntiforgeryToken emits a valid
+                   token (interactive components have no HttpContext). The logout
+                   button inside the interactive UserDropDown submits it via form="". *@
+                <form id="hydash-logout-form" action="Account/Logout" method="post" style="display:none;">
                     <AntiforgeryToken />
                     <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                    <MudButton Color="Color.Secondary" ButtonType="ButtonType.Submit" StartIcon="@Icons.Material.Filled.ExitToApp">
-                        Logout
-                    </MudButton>
-				</form>
-				<!--<MudButton style="color:white;" Href="Account/Manage">
-                    @context.User.Identity?.Name
-                    @if (user?.AvatarImage != null && user?.AvatarImage.Length > 0)
-                    {
-                        <img src="data:image/*;base64,@(Convert.ToBase64String(user.AvatarImage))" alt="User Avatar" style="width: 40px; height: 40px; border-radius:50%; border: 2px solid white; margin-left: 10px" />
-                    }
-                    else
-                    {
-                        <img src="/images/default_avatar.png" alt="User Avatar" style="width: 30px; height: 30px; border-radius:50%;" />
-                    }
-                </MudButton>-->
-                <UserDropDown />
+                </form>
             </Authorized>
             <NotAuthorized>
-                <MudButton Color="Color.Primary" StartIcon="@Icons.Material.Filled.AppRegistration" Href="Account/Register">
-                    Register
-                </MudButton>
-                <MudButton Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Login" Href="Account/Login">
+                <MudButton Color="Color.Inherit" Variant="Variant.Text" StartIcon="@Icons.Material.Rounded.Login" Href="Account/Login" Class="mr-2">
                     Login
+                </MudButton>
+                <MudButton Color="Color.Primary" Variant="Variant.Filled" DisableElevation="true" StartIcon="@Icons.Material.Rounded.RocketLaunch" Href="Account/Register" Class="hy-cta">
+                    Get started
                 </MudButton>
             </NotAuthorized>
         </AuthorizeView>
@@ -64,33 +57,10 @@
 
 @code {
     private string? currentUrl;
-    private ApplicationUser? user;
 
-    MudTheme DarkTheme = new MudTheme()
-    {
-        PaletteDark = new PaletteDark()
-        {
-            
-        }
-    };
-
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
-
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var claimsPrincipal = authState.User;
-
-        if (claimsPrincipal.Identity?.IsAuthenticated ?? false)
-        {
-            var userId = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (userId != null)
-            {
-                user = await UserService.GetUserAsync(userId);
-            }
-        }
-
         NavigationManager.LocationChanged += async (sender, e) => await OnLocationChanged(sender, e);
     }
 
