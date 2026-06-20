@@ -4,27 +4,28 @@ using hydash.WebApp.Data.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace hydash.WebApp.Components.Account
 {
     public class RoleService
     {
-        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IDbContextFactory<ApplicationDbContext> _contextFactory;
 
-        public RoleService(IDbContextFactory<ApplicationDbContext> dbContextFactory, RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager)
+        public RoleService(RoleManager<ApplicationRole> roleManager, UserManager<ApplicationUser> userManager, IDbContextFactory<ApplicationDbContext> contextFactory)
         {
-            _dbContextFactory = dbContextFactory;
             _roleManager = roleManager;
             _userManager = userManager;
+            _contextFactory = contextFactory;
         }
 
         // Create a role if it doesn't exist
         public async Task CreateRoleAsync(string roleName, string description, string colorCode, RolePriority priority)
         {
-            using (var context = _dbContextFactory.CreateDbContext())
+            using (var context = _contextFactory.CreateDbContext())
             {
                 if (!await _roleManager.RoleExistsAsync(roleName))
                 {
@@ -37,7 +38,7 @@ namespace hydash.WebApp.Components.Account
         // Delete a role by name
         public async Task DeleteRoleAsync(string roleName)
         {
-            using (var context = _dbContextFactory.CreateDbContext())
+            using (var context = _contextFactory.CreateDbContext())
             {
                 var role = await _roleManager.FindByNameAsync(roleName);
                 if (role != null)
@@ -56,7 +57,7 @@ namespace hydash.WebApp.Components.Account
         // Check if a role exists
         public async Task<bool> RoleExistsAsync(string roleName)
         {
-            using (var context = _dbContextFactory.CreateDbContext())
+            using (var context = _contextFactory.CreateDbContext())
             {
                 return await _roleManager.RoleExistsAsync(roleName);
             }
@@ -65,7 +66,7 @@ namespace hydash.WebApp.Components.Account
         // Get Roles from user
         public async Task<IList<string>> GetUserRolesAsync(ApplicationUser user)
         {
-            using (var context = _dbContextFactory.CreateDbContext())
+            using (var context = _contextFactory.CreateDbContext())
             {
                 var userRoles = await _userManager.GetRolesAsync(user);
                 return userRoles;
@@ -75,7 +76,7 @@ namespace hydash.WebApp.Components.Account
         // Get Role with highest priority from user
         public async Task<ApplicationRole> GetUserHighestPriorityRoleAsync(ApplicationUser user)
         {
-            using (var context = _dbContextFactory.CreateDbContext())
+            using (var context = _contextFactory.CreateDbContext())
             {
                 var userRoles = await _userManager.GetRolesAsync(user);
 
@@ -105,7 +106,7 @@ namespace hydash.WebApp.Components.Account
         {
             var roleExists = await RoleExistsAsync(roleName);
 
-            using (var context = _dbContextFactory.CreateDbContext())
+            await using (var context = await _contextFactory.CreateDbContextAsync())
             {
                 ApplicationRole memberRole = await _roleManager.FindByNameAsync("Member");
 
@@ -131,6 +132,7 @@ namespace hydash.WebApp.Components.Account
             return memberRole;
         }
 
+        // Update an existing role
         public async Task UpdateRoleAsync(ApplicationRole role)
         {
             await _roleManager.UpdateAsync(role);
@@ -138,26 +140,38 @@ namespace hydash.WebApp.Components.Account
 
         public async Task<List<Permission>> GetAllPermissionsAsync()
         {
-            using var context = _dbContextFactory.CreateDbContext();
+            await using var context = await _contextFactory.CreateDbContextAsync();
             return await context.Permissions.ToListAsync();
         }
 
+        // Get the permission ids currently assigned to a role
         public async Task<List<int>> GetRolePermissionIdsAsync(string roleId)
         {
-            using var context = _dbContextFactory.CreateDbContext();
+            await using var context = await _contextFactory.CreateDbContextAsync();
             return await context.RolePermissions
                 .Where(rp => rp.RoleId == roleId)
                 .Select(rp => rp.PermissionId)
                 .ToListAsync();
         }
 
+        // Replace the set of permissions assigned to a role
         public async Task SetRolePermissionsAsync(string roleId, IEnumerable<int> permissionIds)
         {
-            using var context = _dbContextFactory.CreateDbContext();
-            var existing = context.RolePermissions.Where(rp => rp.RoleId == roleId);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            
+            var existing = await context.RolePermissions
+                .Where(rp => rp.RoleId == roleId)
+                .ToListAsync();
             context.RolePermissions.RemoveRange(existing);
-            foreach (var permId in permissionIds)
-                context.RolePermissions.Add(new RolePermission { RoleId = roleId, PermissionId = permId });
+            
+            foreach (var permissionId in permissionIds.Distinct())
+            {
+                context.RolePermissions.Add(new RolePermission
+                {
+                    RoleId = roleId,
+                    PermissionId = permissionId
+                });
+            }
             await context.SaveChangesAsync();
         }
     }

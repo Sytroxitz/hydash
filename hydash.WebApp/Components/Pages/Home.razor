@@ -1,26 +1,99 @@
-﻿@page "/"
+@page "/"
 
 @using hydash.WebApp.Components.Layout
 @layout HomeLayout
 
 @using hydash.WebApp.Components
+@using MudBlazor
 
 <PageTitle>HYDASH | Home</PageTitle>
 
-<div style="
-			color:white;
-			padding: 12rem;
-			border:0px;
-			width:100%;
-			height:94vh;
-			display:flex;
-			flex-direction:column;
-			justify-content:center;
-			background-image: linear-gradient(135deg, #dd1173, #350e47);">
-	<MudContainer MaxWidth="MaxWidth.ExtraExtraLarge">
+<section class="hero">
+    <div class="hero_bg">
+        <span class="hy-blob hero_blob1"></span>
+        <span class="hy-blob hero_blob2"></span>
+        <div class="hero_grid"></div>
+    </div>
 
-		<h1 class="hero_h1 fadeInAnim_Head">HY<span class="text_2">per</span>DASH<span class="text_2">board</span></h1>
-		<h3 class="hero_subhead fadeInAnim_Sub">Enhance your game server with HyDash: Effortless management and monitoring at zero cost. Install, log in and simplify your tasks with ease.</h3>
+    <MudContainer MaxWidth="MaxWidth.Large" Class="hero_inner">
+        <span class="hero_badge hy-anim-up">
+            <span class="hero_badge_dot"></span>
+            Free &amp; open-source game server management
+        </span>
 
-	</MudContainer>
-</div>
+        <h1 class="hero_h1 hy-anim-up hy-delay-1">
+            HY<span class="text_2">per</span>DASH<span class="text_2">board</span>
+        </h1>
+
+        <p class="hero_subhead hy-anim-up hy-delay-2">
+            Enhance your game server with HyDash: effortless management and monitoring
+            at zero cost. Install, log in and simplify your tasks with ease.
+        </p>
+
+        <div class="hero_actions hy-anim-up hy-delay-3">
+            <AuthorizeView>
+                <Authorized>
+                    <MudButton Href="/admin"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               DisableElevation="true"
+                               EndIcon="@Icons.Material.Rounded.ArrowForward"
+                               Class="hero_cta">
+                        Open dashboard
+                    </MudButton>
+                    <MudButton Href="Account/Manage"
+                               Variant="Variant.Outlined"
+                               Color="Color.Inherit"
+                               Size="Size.Large"
+                               StartIcon="@Icons.Material.Rounded.ManageAccounts"
+                               Class="hero_ghost">
+                        Manage profile
+                    </MudButton>
+                </Authorized>
+                <NotAuthorized>
+                    <MudButton Href="Account/Register"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Size="Size.Large"
+                               DisableElevation="true"
+                               EndIcon="@Icons.Material.Rounded.ArrowForward"
+                               Class="hero_cta">
+                        Get started
+                    </MudButton>
+                    <MudButton Href="Account/Login"
+                               Variant="Variant.Outlined"
+                               Color="Color.Inherit"
+                               Size="Size.Large"
+                               Class="hero_ghost">
+                        Sign in
+                    </MudButton>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+
+        <div class="hero_features hy-anim-up hy-delay-4">
+            @foreach (var f in _features)
+            {
+                <div class="feature_card hy-hover-lift hy-glass">
+                    <div class="feature_icon">
+                        <MudIcon Icon="@f.Icon" Size="Size.Large" />
+                    </div>
+                    <h3 class="feature_title">@f.Title</h3>
+                    <p class="feature_text">@f.Text</p>
+                </div>
+            }
+        </div>
+    </MudContainer>
+</section>
+
+@code {
+    private record Feature(string Icon, string Title, string Text);
+
+    private readonly Feature[] _features =
+    {
+        new(Icons.Material.Rounded.Dashboard, "Effortless control", "Start, stop and manage your servers from one clean dashboard."),
+        new(Icons.Material.Rounded.Insights, "Live monitoring", "Track performance and player activity in real time."),
+        new(Icons.Material.Rounded.Bolt, "Zero cost", "100% free and open-source under AGPL-3.0 — no hidden fees."),
+    };
+}

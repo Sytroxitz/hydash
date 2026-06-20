@@ -10,58 +10,121 @@
 
 @rendermode RenderMode.InteractiveServer
 
-
-@inject IAuthorizationService AuthorizationService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject UserManager<ApplicationUser> UserManager
-@inject UserService UserService
-@inject RoleService RoleService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
 
-<MudMenu Color="Color.Inherit" AnchorOrigin="Origin.BottomCenter" TransformOrigin="Origin.TopCenter">
+<MudMenu AnchorOrigin="Origin.BottomRight"
+         TransformOrigin="Origin.TopRight"
+         PopoverClass="user-menu-popover"
+         ListClass="pa-0">
     <ActivatorContent>
-        <MudButton>
-            <MudChip T="string" Color="Color.Error" Style="padding-right:0px;">
-                @(user?.UserName)
-                @if (user?.AvatarImage != null && user?.AvatarImage.Length > 0)
-                {
-                    <img src="data:image/*;base64,@(Convert.ToBase64String(user.AvatarImage))" alt="User Avatar" style="width: 40px; height: 40px; border-radius:50%; border: 1px solid white; margin-left: 5px;" />
-                }
-                else
-                {
-                    <img src="/images/default_avatar.png" alt="User Avatar" style="width: 40px; height: 40px; border-radius:50%; border: 2px solid white; margin-left: 5px;" />
-                }
-            </MudChip>
-        </MudButton>
+        <div class="user-pill">
+            <img src="@AvatarSrc" alt="Avatar" class="user-pill-avatar" />
+            <span class="user-pill-name">@(user?.UserName)</span>
+            <MudIcon Icon="@Icons.Material.Rounded.ExpandMore" Size="Size.Small" Class="user-pill-caret" />
+        </div>
     </ActivatorContent>
     <ChildContent>
-        <MudChip T="string" Color="Color.Error" Style="display:flex; justify-content:center;">@(role?.Name)</MudChip>
-        <MudButton StartIcon="@Icons.Material.Outlined.ManageAccounts" style="justify-content:left; padding:15px; width:100%; border-radius: 0%" Href="Account/Manage">
-            Profile
-        </MudButton>
-        <MudButton StartIcon="@Icons.Material.Outlined.Dashboard" style="justify-content:left; padding:15px; width:100%; border-radius: 0%">Dashboard</MudButton>
-        <MudButton StartIcon="@Icons.Material.Outlined.Help" style="justify-content:left; padding:15px; width:100%; border-radius: 0%">Help</MudButton>
+        <div class="user-menu">
+            <div class="user-menu-head">
+                <img src="@AvatarSrc" alt="Avatar" class="user-menu-avatar" />
+                <div class="user-menu-id">
+                    <span class="user-menu-name">@(user?.UserName)</span>
+                    <span class="user-menu-email">@(user?.Email)</span>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(roleName))
+            {
+                <span class="user-menu-role" style="@RoleStyle">@roleName</span>
+            }
+
+            <div class="user-menu-divider"></div>
+
+            <a class="user-menu-item" href="Account/Manage">
+                <MudIcon Icon="@Icons.Material.Outlined.ManageAccounts" Size="Size.Small" />
+                <span>Profile</span>
+            </a>
+            <a class="user-menu-item" href="/admin">
+                <MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" />
+                <span>Dashboard</span>
+            </a>
+            <a class="user-menu-item" href="#">
+                <MudIcon Icon="@Icons.Material.Outlined.HelpOutline" Size="Size.Small" />
+                <span>Help</span>
+            </a>
+
+            <div class="user-menu-divider"></div>
+
+            @* Submits the statically-rendered #hydash-logout-form in NavAppBar
+               (which carries a valid antiforgery token). *@
+            <button type="submit" form="hydash-logout-form" class="user-menu-item user-menu-logout">
+                <MudIcon Icon="@Icons.Material.Outlined.Logout" Size="Size.Small" />
+                <span>Log out</span>
+            </button>
+        </div>
     </ChildContent>
 </MudMenu>
 
 @code {
     private ApplicationUser? user;
-    private ApplicationRole? role;
+    private string? roleName;
+    private string? roleColor;
+
+    private string AvatarSrc =>
+        (user?.AvatarImage is { Length: > 0 } img)
+            ? $"data:image/*;base64,{Convert.ToBase64String(img)}"
+            : "/images/default_avatar.png";
+
+    private string RoleStyle =>
+        string.IsNullOrEmpty(roleColor)
+            ? string.Empty
+            : $"color:{roleColor}; border-color:{roleColor}66; background:{roleColor}1a;";
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var claimsPrincipal = authState.User;
 
-        if (claimsPrincipal.Identity?.IsAuthenticated ?? false)
+        if (!(claimsPrincipal.Identity?.IsAuthenticated ?? false))
         {
-            var userId = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            return;
+        }
 
-            if (userId != null)
-            {
-                user = await UserService.GetUserAsync(userId);
-                role = await RoleService.GetUserRoleAsync(user);
-            }
+        var userId = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userId is null)
+        {
+            return;
+        }
+
+        // Use a short-lived context from the factory so we never share the
+        // scoped Identity DbContext with the page being navigated to.
+        await using var context = await DbContextFactory.CreateDbContextAsync();
+
+        user = await context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        var roleIds = await context.UserRoles
+            .Where(ur => ur.UserId == userId)
+            .Select(ur => ur.RoleId)
+            .ToListAsync();
+
+        if (roleIds.Count > 0)
+        {
+            var role = await context.Roles
+                .AsNoTracking()
+                .Where(r => roleIds.Contains(r.Id))
+                .OrderByDescending(r => r.Priority)
+                .FirstOrDefaultAsync();
+
+            roleName = role?.Name ?? "Member";
+            roleColor = role?.ColorCode;
+        }
+        else
+        {
+            roleName = "Member";
         }
     }
 }

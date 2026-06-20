@@ -3,29 +3,35 @@
 
 @inject SignInManager<ApplicationUser> SignInManager
 
-<ul class="nav nav-pills flex-column">
-    <li class="nav-item">
-        <NavLink class="nav-link" href="Account/Manage" Match="NavLinkMatch.All">Profile</NavLink>
-    </li>
-    <li class="nav-item">
-        <NavLink class="nav-link" href="Account/Manage/Email">Email</NavLink>
-    </li>
-    <li class="nav-item">
-        <NavLink class="nav-link" href="Account/Manage/ChangePassword">Password</NavLink>
-    </li>
+<nav class="manage-nav-list">
+    <NavLink class="manage-nav-link" href="Account/Manage" Match="NavLinkMatch.All">
+        <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small" />
+        <span>Profile</span>
+    </NavLink>
+    <NavLink class="manage-nav-link" href="Account/Manage/Email">
+        <MudIcon Icon="@Icons.Material.Outlined.Email" Size="Size.Small" />
+        <span>Email</span>
+    </NavLink>
+    <NavLink class="manage-nav-link" href="Account/Manage/ChangePassword">
+        <MudIcon Icon="@Icons.Material.Outlined.Password" Size="Size.Small" />
+        <span>Password</span>
+    </NavLink>
     @if (hasExternalLogins)
     {
-        <li class="nav-item">
-            <NavLink class="nav-link" href="Account/Manage/ExternalLogins">External logins</NavLink>
-        </li>
+        <NavLink class="manage-nav-link" href="Account/Manage/ExternalLogins">
+            <MudIcon Icon="@Icons.Material.Outlined.Link" Size="Size.Small" />
+            <span>External logins</span>
+        </NavLink>
     }
-    <li class="nav-item">
-        <NavLink class="nav-link" href="Account/Manage/TwoFactorAuthentication">Two-factor authentication</NavLink>
-    </li>
-    <li class="nav-item">
-        <NavLink class="nav-link" href="Account/Manage/PersonalData">Personal data</NavLink>
-    </li>
-</ul>
+    <NavLink class="manage-nav-link" href="Account/Manage/TwoFactorAuthentication">
+        <MudIcon Icon="@Icons.Material.Outlined.Security" Size="Size.Small" />
+        <span>Two-factor authentication</span>
+    </NavLink>
+    <NavLink class="manage-nav-link" href="Account/Manage/PersonalData">
+        <MudIcon Icon="@Icons.Material.Outlined.Shield" Size="Size.Small" />
+        <span>Personal data</span>
+    </NavLink>
+</nav>
 
 @code {
     private bool hasExternalLogins;
