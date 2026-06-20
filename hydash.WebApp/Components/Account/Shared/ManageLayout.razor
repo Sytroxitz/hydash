@@ -1,17 +1,18 @@
 ﻿@inherits LayoutComponentBase
 @layout AccountLayout
 
-<h1>Manage your account</h1>
+<div class="manage-page">
+    <div class="manage-header hy-anim-up">
+        <h1 class="manage-title">Account settings</h1>
+        <p class="manage-subtitle">Manage your profile, security and personal data.</p>
+    </div>
 
-<div>
-    <h2>Change your account settings</h2>
-    <hr />
-    <div class="row">
-        <div class="col-md-3">
+    <div class="manage-shell">
+        <aside class="manage-nav hy-glass hy-anim-up hy-delay-1">
             <ManageNavMenu />
-        </div>
-        <div class="col-md-9">
+        </aside>
+        <section class="manage-content hy-glass hy-anim-up hy-delay-2">
             @Body
-        </div>
+        </section>
     </div>
 </div>
