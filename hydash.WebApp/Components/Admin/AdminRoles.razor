@@ -1,0 +1,354 @@
+@page "/admin/roles"
+
+@attribute [Authorize(Roles = "Administrator")]
+@layout AdminLayout
+@rendermode RenderMode.InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using hydash.WebApp.Data
+@using hydash.WebApp.Data.EF
+@using hydash.WebApp.Data.Enums
+@using hydash.WebApp.Components.Account
+
+@inject RoleService RoleService
+@inject RoleManager<ApplicationRole> RoleManager
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject ISnackbar Snackbar
+
+<PageTitle>Roles &amp; Permissions — Admin</PageTitle>
+
+<div class="admin-header admin-header--row hy-anim-up">
+    <div>
+        <h1 class="admin-title">Roles &amp; Permissions</h1>
+        <p class="admin-subtitle">Define role hierarchy, colors and permissions.</p>
+    </div>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+        StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="hy-cta">
+        Create Role
+    </MudButton>
+</div>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudDataGrid T="ApplicationRole" Items="_roles" Hover="true" Elevation="0"
+                 SortMode="SortMode.Multiple" Class="admin-table hy-glass hy-anim-up hy-delay-1">
+        <Columns>
+            <TemplateColumn Title="Color" Sortable="false" Filterable="false" CellStyle="width:48px;">
+                <CellTemplate>
+                    <div style="width:28px;height:28px;border-radius:50%;background-color:@context.Item.ColorCode;border:2px solid rgba(255,255,255,0.2);" />
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Name" SortBy="x => x.Name ?? string.Empty">
+                <CellTemplate>
+                    <strong>@context.Item.Name</strong>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.Description" Title="Description" />
+            <TemplateColumn Title="Priority" SortBy="x => x.Priority">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                        @(PriorityLabel(context.Item.Priority))
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Permissions" Sortable="false" Filterable="false">
+                <CellTemplate>
+                    @{
+                        var permIds = _rolePermissionMap.GetValueOrDefault(context.Item.Id, new List<int>());
+                        var permNames = _allPermissions
+                            .Where(p => permIds.Contains(p.Id))
+                            .Select(p => p.Name)
+                            .ToList();
+                    }
+                    @if (context.Item.Priority == SuperuserPriority)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Class="ma-1">All permissions</MudChip>
+                    }
+                    else if (permNames.Count == 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">None</MudText>
+                    }
+                    else
+                    {
+                        @foreach (var name in permNames)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Class="ma-1">@name</MudChip>
+                        }
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions" Sortable="false" Filterable="false"
+                            CellStyle="width:200px;text-align:right;">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd"
+                              AlignItems="AlignItems.Center" Wrap="Wrap.NoWrap">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                            StartIcon="@Icons.Material.Filled.Edit"
+                            OnClick="@(() => OpenEditDialog(context.Item))">
+                            Edit
+                        </MudButton>
+                        @if (context.Item.Priority != SuperuserPriority)
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                StartIcon="@Icons.Material.Filled.Delete"
+                                OnClick="@(() => OpenDeleteDialog(context.Item))">
+                                Delete
+                            </MudButton>
+                        }
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <NoRecordsContent>
+            <MudText Class="pa-4" Color="Color.Secondary">No roles found.</MudText>
+        </NoRecordsContent>
+    </MudDataGrid>
+}
+
+<!-- Create / Edit dialog -->
+<MudDialog @bind-Visible="_roleDialogOpen"
+    Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingRole == null ? "Create Role" : $"Edit Role — {_editingRole.Name}")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="3">
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_formName" Label="Name" Variant="Variant.Outlined" Required="true"
+                    Disabled="@_isEditingSuperuser"
+                    HelperText="@(_isEditingSuperuser ? "The Superuser role cannot be renamed." : null)" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_formDescription" Label="Description" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="8">
+                <MudTextField @bind-Value="_formColor" Label="Color (hex)" Variant="Variant.Outlined"
+                    Placeholder="#FFFFFF" />
+            </MudItem>
+            <MudItem xs="4" Class="d-flex align-center">
+                <div style="width:100%;height:40px;border-radius:8px;background-color:@_formColor;border:2px solid rgba(255,255,255,0.2);" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudSelect T="RolePriority" @bind-Value="_formPriority" Label="Priority" Variant="Variant.Outlined">
+                    @foreach (RolePriority p in Enum.GetValues<RolePriority>())
+                    {
+                        <MudSelectItem Value="p" Disabled="@IsPriorityDisabled(p)">@p.ToString() (@((int)p))</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            @if (_allPermissions.Count > 0)
+            {
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Permissions</MudText>
+                    @if (_isEditingSuperuser)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+                            The Superuser role always holds every permission, including any added later.
+                        </MudText>
+                    }
+                    @foreach (var perm in _allPermissions)
+                    {
+                        <MudCheckBox T="bool"
+                            Value="@(_isEditingSuperuser || _formPermissionIds.Contains(perm.Id))"
+                            ValueChanged="@(v => TogglePermission(perm.Id, v))"
+                            Disabled="@_isEditingSuperuser"
+                            Label="@perm.Name" />
+                    }
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _roleDialogOpen = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveRole"
+            Disabled="@string.IsNullOrWhiteSpace(_formName)">
+            @(_editingRole == null ? "Create" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Delete confirm dialog -->
+<MudDialog @bind-Visible="_deleteDialogOpen"
+    Options="@(new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Delete Role</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>Delete role <strong>@_roleToDelete?.Name</strong>? This cannot be undone.</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _deleteDialogOpen = false)">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmDelete">Delete</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading = true;
+    private List<ApplicationRole> _roles = new();
+    private List<Permission> _allPermissions = new();
+    private Dictionary<string, List<int>> _rolePermissionMap = new();
+    private bool _superuserExists;
+
+    private const int SuperuserPriority = (int)RolePriority.SUPERUSER;
+
+    private bool _roleDialogOpen;
+    private bool _deleteDialogOpen;
+    private ApplicationRole? _editingRole;
+    private ApplicationRole? _roleToDelete;
+    private bool _isEditingSuperuser;
+
+    private string _formName = string.Empty;
+    private string _formDescription = string.Empty;
+    private string _formColor = "#FFFFFF";
+    private RolePriority _formPriority = RolePriority.MEMBER;
+    private List<int> _formPermissionIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        _loading = false;
+    }
+
+    private async Task LoadData()
+    {
+        await using var context = await DbContextFactory.CreateDbContextAsync();
+        _roles = await context.Roles.ToListAsync();
+        _allPermissions = await context.Permissions.ToListAsync();
+
+        _rolePermissionMap = (await context.RolePermissions
+                .Select(rp => new { rp.RoleId, rp.PermissionId })
+                .ToListAsync())
+            .GroupBy(rp => rp.RoleId)
+            .ToDictionary(g => g.Key, g => g.Select(rp => rp.PermissionId).ToList());
+
+        _superuserExists = _roles.Any(r => r.Priority == SuperuserPriority);
+    }
+
+    // The Superuser priority may only ever be held by a single role: lock the option
+    // when one already exists, and lock the existing Superuser role at that priority.
+    private bool IsPriorityDisabled(RolePriority priority)
+    {
+        bool editingSuperuser = _editingRole != null && _editingRole.Priority == SuperuserPriority;
+
+        if (editingSuperuser)
+            return priority != RolePriority.SUPERUSER;
+
+        return priority == RolePriority.SUPERUSER && _superuserExists;
+    }
+
+    private void OpenCreateDialog()
+    {
+        _editingRole = null;
+        _isEditingSuperuser = false;
+        _formName = string.Empty;
+        _formDescription = string.Empty;
+        _formColor = "#FFFFFF";
+        _formPriority = RolePriority.MEMBER;
+        _formPermissionIds = new List<int>();
+        _roleDialogOpen = true;
+    }
+
+    private async Task OpenEditDialog(ApplicationRole role)
+    {
+        _editingRole = role;
+        _isEditingSuperuser = role.Priority == SuperuserPriority;
+        _formName = role.Name ?? string.Empty;
+        _formDescription = role.Description ?? string.Empty;
+        _formColor = role.ColorCode ?? "#FFFFFF";
+        _formPriority = (RolePriority)role.Priority;
+        _formPermissionIds = new List<int>(await RoleService.GetRolePermissionIdsAsync(role.Id));
+        _roleDialogOpen = true;
+    }
+
+    private void TogglePermission(int permId, bool isChecked)
+    {
+        if (isChecked && !_formPermissionIds.Contains(permId))
+            _formPermissionIds.Add(permId);
+        else if (!isChecked)
+            _formPermissionIds.Remove(permId);
+    }
+
+    private async Task SaveRole()
+    {
+        if (string.IsNullOrWhiteSpace(_formName)) return;
+
+        bool isCreate = _editingRole == null;
+
+        if (isCreate)
+        {
+            var result = await RoleService.CreateRoleAsync(_formName, _formDescription, _formColor, _formPriority);
+            if (!result.Success)
+            {
+                Snackbar.Add(result.Error ?? "Could not create role.", Severity.Error);
+                return;
+            }
+
+            var created = await RoleManager.FindByNameAsync(_formName);
+            if (created != null)
+                await RoleService.SetRolePermissionsAsync(created.Id, _formPermissionIds);
+        }
+        else
+        {
+            _editingRole!.Name = _formName;
+            _editingRole.NormalizedName = _formName.ToUpperInvariant();
+            _editingRole.Description = _formDescription;
+            _editingRole.ColorCode = _formColor;
+            _editingRole.Priority = (int)_formPriority;
+
+            var result = await RoleService.UpdateRoleAsync(_editingRole);
+            if (!result.Success)
+            {
+                // Revert the in-memory mutation that was rejected.
+                await LoadData();
+                _roleDialogOpen = false;
+                Snackbar.Add(result.Error ?? "Could not update role.", Severity.Error);
+                return;
+            }
+
+            await RoleService.SetRolePermissionsAsync(_editingRole.Id, _formPermissionIds);
+        }
+
+        await LoadData();
+        _roleDialogOpen = false;
+        Snackbar.Add(isCreate ? "Role created." : "Role updated.", Severity.Success);
+    }
+
+    private void OpenDeleteDialog(ApplicationRole role)
+    {
+        _roleToDelete = role;
+        _deleteDialogOpen = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (_roleToDelete == null) return;
+
+        var result = await RoleService.DeleteRoleAsync(_roleToDelete.Name!);
+        _deleteDialogOpen = false;
+
+        if (!result.Success)
+        {
+            Snackbar.Add(result.Error ?? "Could not delete role.", Severity.Error);
+            return;
+        }
+
+        await LoadData();
+        Snackbar.Add($"Role '{_roleToDelete.Name}' deleted.", Severity.Warning);
+    }
+
+    private static string PriorityLabel(int priority)
+    {
+        foreach (RolePriority p in Enum.GetValues<RolePriority>())
+        {
+            if ((int)p == priority) return $"{p} ({priority})";
+        }
+        return priority.ToString();
+    }
+}

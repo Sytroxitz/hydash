@@ -1,0 +1,219 @@
+@page "/admin/permissions"
+
+@attribute [Authorize(Roles = "Administrator")]
+@layout AdminLayout
+@rendermode RenderMode.InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.EntityFrameworkCore
+@using hydash.WebApp.Data
+@using hydash.WebApp.Data.EF
+@using hydash.WebApp.Components.Account
+
+@inject RoleService RoleService
+@inject ISnackbar Snackbar
+
+<PageTitle>Permissions — Admin</PageTitle>
+
+<div class="admin-header admin-header--row hy-anim-up">
+    <div>
+        <h1 class="admin-title">Permissions</h1>
+        <p class="admin-subtitle">Create and manage the permissions you can assign to roles.</p>
+    </div>
+    <MudSpacer />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" DisableElevation="true"
+        StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateDialog" Class="hy-cta">
+        Create Permission
+    </MudButton>
+</div>
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudDataGrid T="Permission" Items="_permissions" Hover="true" Elevation="0"
+                 SortMode="SortMode.Multiple" Class="admin-table hy-glass hy-anim-up hy-delay-1">
+        <Columns>
+            <TemplateColumn Title="Name" SortBy="x => x.Name ?? string.Empty">
+                <CellTemplate>
+                    <strong>@context.Item.Name</strong>
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.Description" Title="Description" />
+            <TemplateColumn Title="Used by" Sortable="false" Filterable="false" CellStyle="width:120px;">
+                <CellTemplate>
+                    @{
+                        // The Superuser role implicitly holds every permission.
+                        var count = _usageCounts.GetValueOrDefault(context.Item.Id, 0)
+                            + (_superuserExists ? 1 : 0);
+                    }
+                    @if (count == 0)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">No roles</MudText>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info">
+                            @count @(count == 1 ? "role" : "roles")
+                        </MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions" Sortable="false" Filterable="false"
+                            CellStyle="width:200px;text-align:right;">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd"
+                              AlignItems="AlignItems.Center" Wrap="Wrap.NoWrap">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                            StartIcon="@Icons.Material.Filled.Edit"
+                            OnClick="@(() => OpenEditDialog(context.Item))">
+                            Edit
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                            StartIcon="@Icons.Material.Filled.Delete"
+                            OnClick="@(() => OpenDeleteDialog(context.Item))">
+                            Delete
+                        </MudButton>
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <NoRecordsContent>
+            <MudText Class="pa-4" Color="Color.Secondary">No permissions yet. Create one to get started.</MudText>
+        </NoRecordsContent>
+    </MudDataGrid>
+}
+
+<!-- Create / Edit dialog -->
+<MudDialog @bind-Visible="_permissionDialogOpen"
+    Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(_editingPermission == null ? "Create Permission" : $"Edit Permission — {_editingPermission.Name}")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="3">
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_formName" Label="Name" Variant="Variant.Outlined" Required="true" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_formDescription" Label="Description" Variant="Variant.Outlined"
+                    Lines="3" />
+            </MudItem>
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _permissionDialogOpen = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SavePermission"
+            Disabled="@string.IsNullOrWhiteSpace(_formName)">
+            @(_editingPermission == null ? "Create" : "Save")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Delete confirm dialog -->
+<MudDialog @bind-Visible="_deleteDialogOpen"
+    Options="@(new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Delete Permission</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>
+            Delete permission <strong>@_permissionToDelete?.Name</strong>?
+            It will be removed from all roles that currently have it. This cannot be undone.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _deleteDialogOpen = false)">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmDelete">Delete</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading = true;
+    private List<Permission> _permissions = new();
+    private Dictionary<int, int> _usageCounts = new();
+    private bool _superuserExists;
+
+    private bool _permissionDialogOpen;
+    private bool _deleteDialogOpen;
+    private Permission? _editingPermission;
+    private Permission? _permissionToDelete;
+
+    private string _formName = string.Empty;
+    private string _formDescription = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        _loading = false;
+    }
+
+    private async Task LoadData()
+    {
+        _permissions = await RoleService.GetAllPermissionsAsync();
+        _usageCounts = await RoleService.GetPermissionUsageCountsAsync();
+        _superuserExists = await RoleService.SuperuserRoleExistsAsync();
+    }
+
+    private void OpenCreateDialog()
+    {
+        _editingPermission = null;
+        _formName = string.Empty;
+        _formDescription = string.Empty;
+        _permissionDialogOpen = true;
+    }
+
+    private void OpenEditDialog(Permission permission)
+    {
+        _editingPermission = permission;
+        _formName = permission.Name ?? string.Empty;
+        _formDescription = permission.Description ?? string.Empty;
+        _permissionDialogOpen = true;
+    }
+
+    private async Task SavePermission()
+    {
+        if (string.IsNullOrWhiteSpace(_formName)) return;
+
+        bool isCreate = _editingPermission == null;
+
+        var result = isCreate
+            ? await RoleService.CreatePermissionAsync(_formName, _formDescription)
+            : await RoleService.UpdatePermissionAsync(_editingPermission!.Id, _formName, _formDescription);
+
+        if (!result.Success)
+        {
+            Snackbar.Add(result.Error ?? "Could not save permission.", Severity.Error);
+            return;
+        }
+
+        await LoadData();
+        _permissionDialogOpen = false;
+        Snackbar.Add(isCreate ? "Permission created." : "Permission updated.", Severity.Success);
+    }
+
+    private void OpenDeleteDialog(Permission permission)
+    {
+        _permissionToDelete = permission;
+        _deleteDialogOpen = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (_permissionToDelete == null) return;
+
+        var result = await RoleService.DeletePermissionAsync(_permissionToDelete.Id);
+        _deleteDialogOpen = false;
+
+        if (!result.Success)
+        {
+            Snackbar.Add(result.Error ?? "Could not delete permission.", Severity.Error);
+            return;
+        }
+
+        await LoadData();
+        Snackbar.Add($"Permission '{_permissionToDelete.Name}' deleted.", Severity.Warning);
+    }
+}
