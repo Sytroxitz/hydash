@@ -1,0 +1,23 @@
+@namespace hydash.WebApp.Components.Admin
+
+<nav class="admin-nav-list">
+    <NavLink class="admin-nav-link" href="/admin" Match="NavLinkMatch.All">
+        <MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" />
+        <span>Dashboard</span>
+    </NavLink>
+
+    <span class="admin-nav-section">Management</span>
+
+    <NavLink class="admin-nav-link" href="/admin/users">
+        <MudIcon Icon="@Icons.Material.Outlined.People" Size="Size.Small" />
+        <span>Users</span>
+    </NavLink>
+    <NavLink class="admin-nav-link" href="/admin/roles">
+        <MudIcon Icon="@Icons.Material.Outlined.Shield" Size="Size.Small" />
+        <span>Roles &amp; Permissions</span>
+    </NavLink>
+    <NavLink class="admin-nav-link" href="/admin/permissions">
+        <MudIcon Icon="@Icons.Material.Outlined.Key" Size="Size.Small" />
+        <span>Permissions</span>
+    </NavLink>
+</nav>

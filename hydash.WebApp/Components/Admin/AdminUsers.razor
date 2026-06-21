@@ -1,0 +1,316 @@
+@page "/admin/users"
+
+@attribute [Authorize(Roles = "Administrator")]
+@layout AdminLayout
+@rendermode RenderMode.InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using hydash.WebApp.Data
+@using hydash.WebApp.Data.Enums
+@using hydash.WebApp.Components.Account
+
+@inject UserManager<ApplicationUser> UserManager
+@inject RoleService RoleService
+@inject IDbContextFactory<ApplicationDbContext> DbContextFactory
+@inject ISnackbar Snackbar
+
+<PageTitle>Users — Admin</PageTitle>
+
+<div class="admin-header admin-header--row hy-anim-up">
+    <div>
+        <h1 class="admin-title">Users</h1>
+        <p class="admin-subtitle">Manage accounts and their role assignments.</p>
+    </div>
+    <MudSpacer />
+    <MudChip T="string" Variant="Variant.Text" Color="Color.Default">@_users.Count total</MudChip>
+</div>
+
+<MudTextField @bind-Value="_search" Placeholder="Search by username or email…"
+    Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+    Immediate="true" Class="mb-4 hy-anim-up hy-delay-1" Variant="Variant.Outlined" />
+
+@if (_loading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudDataGrid T="UserRow" Items="_users" QuickFilter="QuickFilter" Hover="true" Elevation="0"
+                 SortMode="SortMode.Multiple" Class="admin-table hy-glass hy-anim-up hy-delay-2">
+        <Columns>
+            <TemplateColumn Title="" Sortable="false" Filterable="false" CellStyle="width:56px;">
+                <CellTemplate>
+                    @if (context.Item.User.AvatarImage != null && context.Item.User.AvatarImage.Length > 0)
+                    {
+                        <img src="data:image/*;base64,@(Convert.ToBase64String(context.Item.User.AvatarImage))"
+                             alt="Avatar of @context.Item.User.UserName"
+                             style="width:40px;height:40px;border-radius:50%;object-fit:cover;display:block;" />
+                    }
+                    else
+                    {
+                        <img src="/images/default_avatar.png" alt="Default avatar"
+                             style="width:40px;height:40px;border-radius:50%;display:block;" />
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.User.UserName" Title="Username" />
+            <PropertyColumn Property="x => x.User.Email" Title="Email" />
+            <TemplateColumn Title="Role" SortBy="x => x.HighestRole?.Priority ?? -1">
+                <CellTemplate>
+                    @if (context.Item.HighestRole != null)
+                    {
+                        <MudChip T="string" Size="Size.Small"
+                            Style="@($"background-color:{context.Item.HighestRole.ColorCode};color:#fff;font-weight:600;")">
+                            @context.Item.HighestRole.Name
+                        </MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default">No Role</MudChip>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Joined" SortBy="x => x.User.CreatedAt">
+                <CellTemplate>
+                    <MudTooltip Text="@context.Item.User.CreatedAt.ToLocalTime().ToString("f")">
+                        <span>@context.Item.User.CreatedAt.ToLocalTime().ToString("g")</span>
+                    </MudTooltip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Last updated" SortBy="x => x.User.UpdatedAt ?? DateTime.MinValue">
+                <CellTemplate>
+                    @if (context.Item.User.UpdatedAt is { } updated)
+                    {
+                        <MudTooltip Text="@updated.ToLocalTime().ToString("f")">
+                            <span>@updated.ToLocalTime().ToString("g")</span>
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <MudText Color="Color.Secondary">—</MudText>
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Actions" Sortable="false" Filterable="false"
+                            CellStyle="width:200px;text-align:right;">
+                <CellTemplate>
+                    <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd"
+                              AlignItems="AlignItems.Center" Wrap="Wrap.NoWrap">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                            StartIcon="@Icons.Material.Filled.ManageAccounts"
+                            OnClick="@(() => OpenRolesDialog(context.Item))">
+                            Roles
+                        </MudButton>
+                        @if (!IsSuperuser(context.Item))
+                        {
+                            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                StartIcon="@Icons.Material.Filled.Delete"
+                                OnClick="@(() => OpenDeleteDialog(context.Item))">
+                                Delete
+                            </MudButton>
+                        }
+                    </MudStack>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <NoRecordsContent>
+            <MudText Class="pa-4" Color="Color.Secondary">No users found.</MudText>
+        </NoRecordsContent>
+    </MudDataGrid>
+}
+
+<!-- Manage roles dialog -->
+<MudDialog @bind-Visible="_rolesDialogOpen"
+    Options="@(new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true, CloseButton = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Manage Roles — @_selectedRow?.User.UserName</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_allRoles.Count == 0)
+        {
+            <MudText Color="Color.Secondary">No roles available.</MudText>
+        }
+        else
+        {
+            foreach (var role in _allRoles)
+            {
+                // Locked once any holder exists: the current holder can't drop it,
+                // and nobody else can pick it up (at most one holder).
+                var locked = role.Priority == SuperuserPriority && SuperuserHolderExists;
+                <MudCheckBox T="bool"
+                    Value="_editRoleNames.Contains(role.Name!)"
+                    ValueChanged="@(v => ToggleRole(role.Name!, v))"
+                    Disabled="@locked"
+                    Label="@(locked ? $"{role.Name} (locked)" : role.Name)" />
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _rolesDialogOpen = false)">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="SaveRoles">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+<!-- Delete confirm dialog -->
+<MudDialog @bind-Visible="_deleteDialogOpen"
+    Options="@(new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true })">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Delete User</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>Delete <strong>@_selectedRow?.User.UserName</strong>? This cannot be undone.</MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => _deleteDialogOpen = false)">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="ConfirmDelete">Delete</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool _loading = true;
+    private string _search = string.Empty;
+    private List<UserRow> _users = new();
+    private List<ApplicationRole> _allRoles = new();
+
+    private bool _rolesDialogOpen;
+    private bool _deleteDialogOpen;
+    private UserRow? _selectedRow;
+    private List<string> _editRoleNames = new();
+
+    private const int SuperuserPriority = (int)RolePriority.SUPERUSER;
+
+    // A user "holds" the Superuser role when their highest-priority role is the Superuser role.
+    private bool IsSuperuser(UserRow row) => row.HighestRole?.Priority == SuperuserPriority;
+
+    // The Superuser role may be held by at most one user.
+    private bool SuperuserHolderExists => _users.Any(IsSuperuser);
+
+    private bool IsSuperuserRoleName(string roleName) =>
+        _allRoles.Any(r => r.Name == roleName && r.Priority == SuperuserPriority);
+
+    private Func<UserRow, bool> QuickFilter => row =>
+        string.IsNullOrWhiteSpace(_search) ||
+        (row.User.UserName?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+        (row.User.Email?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await using var context = await DbContextFactory.CreateDbContextAsync();
+
+        _allRoles = await context.Roles.ToListAsync();
+        var users = await context.Users.ToListAsync();
+
+        var userRolesMap = (await context.UserRoles
+                .Join(context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name! })
+                .ToListAsync())
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.RoleName).ToList());
+
+        foreach (var user in users)
+        {
+            var roleNames = userRolesMap.GetValueOrDefault(user.Id, new List<string>());
+            ApplicationRole? highest = null;
+            foreach (var rn in roleNames)
+            {
+                var role = _allRoles.FirstOrDefault(r => r.Name == rn);
+                if (role != null && (highest == null || role.Priority > highest.Priority))
+                    highest = role;
+            }
+            _users.Add(new UserRow(user, roleNames, highest));
+        }
+
+        _loading = false;
+    }
+
+    private void OpenRolesDialog(UserRow row)
+    {
+        _selectedRow = row;
+        _editRoleNames = new List<string>(row.RoleNames);
+        _rolesDialogOpen = true;
+    }
+
+    private void ToggleRole(string roleName, bool isChecked)
+    {
+        if (isChecked && !_editRoleNames.Contains(roleName))
+            _editRoleNames.Add(roleName);
+        else if (!isChecked)
+            _editRoleNames.Remove(roleName);
+    }
+
+    private async Task SaveRoles()
+    {
+        if (_selectedRow == null) return;
+
+        var toAdd = _editRoleNames.Except(_selectedRow.RoleNames).ToList();
+        // The Superuser role may be held by at most one user: block adding it once a holder exists.
+        if (SuperuserHolderExists)
+            toAdd = toAdd.Where(r => !IsSuperuserRoleName(r)).ToList();
+
+        // The Superuser role can never be stripped from a user who holds it.
+        var toRemove = _selectedRow.RoleNames.Except(_editRoleNames)
+            .Where(r => !IsSuperuserRoleName(r))
+            .ToList();
+
+        // Operate on the instance tracked by UserManager's scoped context, not the
+        // detached entity loaded via the context factory (avoids duplicate-tracking).
+        var user = await UserManager.FindByIdAsync(_selectedRow.User.Id);
+        if (user == null)
+        {
+            Snackbar.Add("User no longer exists.", Severity.Error);
+            _rolesDialogOpen = false;
+            return;
+        }
+
+        foreach (var r in toAdd)
+            await UserManager.AddToRoleAsync(user, r);
+        foreach (var r in toRemove)
+            await UserManager.RemoveFromRoleAsync(user, r);
+
+        var newRoleNames = (await UserManager.GetRolesAsync(user)).ToList();
+        ApplicationRole? highest = null;
+        foreach (var rn in newRoleNames)
+        {
+            var role = _allRoles.FirstOrDefault(r => r.Name == rn);
+            if (role != null && (highest == null || role.Priority > highest.Priority))
+                highest = role;
+        }
+
+        var idx = _users.IndexOf(_selectedRow);
+        if (idx >= 0)
+            _users[idx] = new UserRow(user, newRoleNames, highest);
+
+        _rolesDialogOpen = false;
+        Snackbar.Add("Roles updated.", Severity.Success);
+    }
+
+    private void OpenDeleteDialog(UserRow row)
+    {
+        _selectedRow = row;
+        _deleteDialogOpen = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (_selectedRow == null) return;
+
+        if (IsSuperuser(_selectedRow))
+        {
+            _deleteDialogOpen = false;
+            Snackbar.Add("A user holding the Superuser role cannot be deleted.", Severity.Error);
+            return;
+        }
+
+        // Resolve the instance tracked by UserManager's scoped context to avoid duplicate-tracking.
+        var user = await UserManager.FindByIdAsync(_selectedRow.User.Id);
+        if (user != null)
+            await UserManager.DeleteAsync(user);
+
+        _users.Remove(_selectedRow);
+        _deleteDialogOpen = false;
+        Snackbar.Add($"User '{_selectedRow.User.UserName}' deleted.", Severity.Warning);
+    }
+
+    private record UserRow(ApplicationUser User, List<string> RoleNames, ApplicationRole? HighestRole);
+}

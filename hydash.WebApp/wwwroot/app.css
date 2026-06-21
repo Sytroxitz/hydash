@@ -913,6 +913,319 @@ h1:focus {
 }
 
 /* ===================================================================
+   Admin area — app bar badge, drawer, nav, pages
+   =================================================================== */
+.admin-badge {
+    margin-left: 0.55rem;
+    padding: 0.12rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--hy-text-muted);
+    border: 1px solid var(--hy-border);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* ---------- Shell: fixed glass top bar + sticky sidebar + content ---------- */
+.admin-layout {
+    min-height: 100vh;
+}
+
+.admin-topbar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0 1rem;
+    /* MUST stay below the popover layer (--mud-zindex-popover = 1200). MudMenu
+       renders its full-screen outside-click overlay (.mud-overlay, z-index:5)
+       INLINE inside this bar, while the menu's popover is teleported to the
+       MudPopoverProvider at root (z-index ~1203). If the bar's own stacking
+       context sits above the popover, the trapped overlay paints over the menu
+       and swallows clicks on its items. Note: --mud-zindex-appbar is 1300 in
+       MudBlazor 7, so we must NOT use it here. */
+    z-index: 1100;
+}
+
+.admin-topbar-spacer {
+    flex: 1;
+}
+
+.admin-burger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    color: var(--hy-text);
+    cursor: pointer;
+    transition: background var(--hy-transition);
+}
+
+.admin-burger:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-shell {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    padding-top: 68px;
+    min-height: 100vh;
+    transition: grid-template-columns var(--hy-transition);
+}
+
+.admin-sidebar {
+    position: sticky;
+    top: 68px;
+    align-self: start;
+    height: calc(100vh - 68px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    border-right: 1px solid var(--hy-border);
+    transition: transform var(--hy-transition);
+}
+
+.admin-main {
+    min-width: 0;
+    padding: 1.75rem;
+}
+
+.admin-scrim {
+    display: none;
+}
+
+/* ---------- Sidebar header ---------- */
+.admin-sidebar-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 1.4rem 1.1rem 1rem;
+}
+
+.admin-sidebar-eyebrow {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--hy-text-muted);
+}
+
+.admin-sidebar-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background: var(--hy-gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+/* Desktop: the burger collapses the sidebar */
+@media (min-width: 901px) {
+    .admin-nav-toggle:checked ~ .admin-shell {
+        grid-template-columns: 0 1fr;
+    }
+
+    .admin-nav-toggle:checked ~ .admin-shell .admin-sidebar {
+        border-right-color: transparent;
+    }
+}
+
+/* Mobile: the sidebar is an off-canvas overlay opened by the burger */
+@media (max-width: 900px) {
+    .admin-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-sidebar {
+        position: fixed;
+        top: 68px;
+        left: 0;
+        bottom: 0;
+        width: 264px;
+        height: auto;
+        z-index: 1200;
+        transform: translateX(-100%);
+        box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.85);
+    }
+
+    .admin-nav-toggle:checked ~ .admin-shell .admin-sidebar {
+        transform: translateX(0);
+    }
+
+    .admin-nav-toggle:checked ~ .admin-scrim {
+        display: block;
+        position: fixed;
+        inset: 68px 0 0 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1150;
+        animation: hy-fade-in 0.2s var(--hy-ease) both;
+    }
+}
+
+/* ---------- Drawer nav (mirrors the account .manage-nav-link look) ---------- */
+.admin-nav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.5rem 0.6rem;
+}
+
+.admin-nav-section {
+    margin: 0.9rem 0.8rem 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--hy-text-muted);
+}
+
+.admin-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.65rem 0.8rem;
+    border-radius: 10px;
+    color: var(--hy-text-muted);
+    text-decoration: none;
+    font-size: 0.92rem;
+    font-weight: 500;
+    transition: background var(--hy-transition), color var(--hy-transition), box-shadow var(--hy-transition);
+}
+
+.admin-nav-link:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--hy-text);
+}
+
+.admin-nav-link .mud-icon-root {
+    color: var(--hy-text-muted);
+    transition: color var(--hy-transition);
+}
+
+.admin-nav-link:hover .mud-icon-root {
+    color: var(--hy-pink);
+}
+
+.admin-nav-link.active {
+    background-image: var(--hy-gradient);
+    color: #fff;
+    box-shadow: 0 10px 24px -12px rgba(229, 36, 126, 0.75);
+}
+
+.admin-nav-link.active .mud-icon-root {
+    color: #fff;
+}
+
+/* ---------- Page header ---------- */
+.admin-header {
+    margin-bottom: 1.8rem;
+}
+
+.admin-header--row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.admin-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.1rem);
+    font-weight: 700;
+    margin: 0;
+    background: var(--hy-gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+.admin-subtitle {
+    color: var(--hy-text-muted);
+    margin: 0.3rem 0 0;
+}
+
+/* ---------- Stat cards ---------- */
+.admin-stat {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.4rem 1.5rem;
+    border-radius: var(--hy-radius-lg);
+}
+
+.admin-stat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    flex-shrink: 0;
+}
+
+.admin-stat-icon .mud-icon-root {
+    font-size: 1.8rem;
+    color: #fff;
+}
+
+.admin-stat-icon--pink {
+    background: linear-gradient(135deg, #dd1173, #ff5fa2);
+    box-shadow: 0 12px 28px -14px rgba(229, 36, 126, 0.9);
+}
+
+.admin-stat-icon--purple {
+    background: linear-gradient(135deg, #8A2BE2, #6a1b9a);
+    box-shadow: 0 12px 28px -14px rgba(138, 43, 226, 0.9);
+}
+
+.admin-stat-body {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+
+.admin-stat-value {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--hy-text);
+}
+
+.admin-stat-label {
+    font-size: 0.85rem;
+    color: var(--hy-text-muted);
+}
+
+/* ---------- Glass tables ---------- */
+.admin-table.mud-table {
+    background: transparent;
+    border-radius: var(--hy-radius-lg);
+    overflow: hidden;
+}
+
+.admin-table .mud-table-root {
+    background: transparent;
+}
+
+.admin-table .mud-table-head .mud-table-cell {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--hy-text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--hy-border);
+}
+
+.admin-table .mud-table-row:hover > .mud-table-cell {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* ===================================================================
    Smooth page transition for routed content
    =================================================================== */
 .mud-main-content > .mud-container,

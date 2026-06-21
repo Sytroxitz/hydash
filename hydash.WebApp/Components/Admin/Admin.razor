@@ -14,7 +14,10 @@
 
 <PageTitle>Dashboard — Admin</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-6">Dashboard</MudText>
+<div class="admin-header hy-anim-up">
+    <h1 class="admin-title">Dashboard</h1>
+    <p class="admin-subtitle">Overview of your Hydash users and roles.</p>
+</div>
 
 @if (_loading)
 {
@@ -24,30 +27,30 @@ else
 {
     <MudGrid Spacing="4">
         <MudItem xs="12" sm="6" md="3">
-            <MudPaper Class="pa-5" Elevation="3">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                    <MudIcon Icon="@Icons.Material.Filled.People" Color="Color.Primary" Style="font-size:2.5rem;" />
-                    <MudStack Spacing="0">
-                        <MudText Typo="Typo.h3" Style="font-weight:700;">@_totalUsers</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Total Users</MudText>
-                    </MudStack>
-                </MudStack>
-            </MudPaper>
+            <div class="admin-stat hy-glass hy-hover-lift hy-anim-up hy-delay-1">
+                <span class="admin-stat-icon admin-stat-icon--pink">
+                    <MudIcon Icon="@Icons.Material.Outlined.People" />
+                </span>
+                <div class="admin-stat-body">
+                    <span class="admin-stat-value">@_totalUsers</span>
+                    <span class="admin-stat-label">Total Users</span>
+                </div>
+            </div>
         </MudItem>
         <MudItem xs="12" sm="6" md="3">
-            <MudPaper Class="pa-5" Elevation="3">
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                    <MudIcon Icon="@Icons.Material.Filled.Shield" Color="Color.Secondary" Style="font-size:2.5rem;" />
-                    <MudStack Spacing="0">
-                        <MudText Typo="Typo.h3" Style="font-weight:700;">@_totalRoles</MudText>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Total Roles</MudText>
-                    </MudStack>
-                </MudStack>
-            </MudPaper>
+            <div class="admin-stat hy-glass hy-hover-lift hy-anim-up hy-delay-2">
+                <span class="admin-stat-icon admin-stat-icon--purple">
+                    <MudIcon Icon="@Icons.Material.Outlined.Shield" />
+                </span>
+                <div class="admin-stat-body">
+                    <span class="admin-stat-value">@_totalRoles</span>
+                    <span class="admin-stat-label">Total Roles</span>
+                </div>
+            </div>
         </MudItem>
     </MudGrid>
 
-    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-8 mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-8 mb-4 hy-anim-up hy-delay-3">
         <MudText Typo="Typo.h5">Recent Users</MudText>
         <MudSpacer />
         <MudButton Variant="Variant.Text" Href="/admin/users" EndIcon="@Icons.Material.Filled.ArrowForward">
@@ -55,28 +58,35 @@ else
         </MudButton>
     </MudStack>
 
-    <MudTable Items="_recentUsers" Hover="true" Elevation="2" Dense="true">
-        <HeaderContent>
-            <MudTh></MudTh>
-            <MudTh>Username</MudTh>
-            <MudTh>Email</MudTh>
-        </HeaderContent>
-        <RowTemplate>
-            <MudTd Style="width:48px;">
-                @if (context.AvatarImage != null && context.AvatarImage.Length > 0)
-                {
-                    <img src="data:image/*;base64,@(Convert.ToBase64String(context.AvatarImage))"
-                         style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />
-                }
-                else
-                {
-                    <img src="/images/default_avatar.png" style="width:32px;height:32px;border-radius:50%;" />
-                }
-            </MudTd>
-            <MudTd>@context.UserName</MudTd>
-            <MudTd>@context.Email</MudTd>
-        </RowTemplate>
-    </MudTable>
+    <MudDataGrid T="ApplicationUser" Items="_recentUsers" Hover="true" Elevation="0" Dense="true"
+                 Class="admin-table hy-glass hy-anim-up hy-delay-3">
+        <Columns>
+            <TemplateColumn Title="" Sortable="false" Filterable="false" CellStyle="width:48px;">
+                <CellTemplate>
+                    @if (context.Item.AvatarImage != null && context.Item.AvatarImage.Length > 0)
+                    {
+                        <img src="data:image/*;base64,@(Convert.ToBase64String(context.Item.AvatarImage))"
+                             alt="Avatar of @context.Item.UserName"
+                             style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />
+                    }
+                    else
+                    {
+                        <img src="/images/default_avatar.png" alt="Default avatar"
+                             style="width:32px;height:32px;border-radius:50%;" />
+                    }
+                </CellTemplate>
+            </TemplateColumn>
+            <PropertyColumn Property="x => x.UserName" Title="Username" />
+            <PropertyColumn Property="x => x.Email" Title="Email" />
+            <TemplateColumn Title="Joined" SortBy="x => x.CreatedAt">
+                <CellTemplate>
+                    <MudTooltip Text="@context.Item.CreatedAt.ToLocalTime().ToString("f")">
+                        <span>@context.Item.CreatedAt.ToLocalTime().ToString("g")</span>
+                    </MudTooltip>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
 }
 
 @code {
@@ -90,7 +100,10 @@ else
         await using var context = await DbContextFactory.CreateDbContextAsync();
         _totalUsers = await context.Users.CountAsync();
         _totalRoles = await context.Roles.CountAsync();
-        _recentUsers = await context.Users.Take(5).ToListAsync();
+        _recentUsers = await context.Users
+            .OrderByDescending(u => u.CreatedAt)
+            .Take(5)
+            .ToListAsync();
         _loading = false;
     }
 }
