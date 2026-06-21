@@ -28,7 +28,7 @@ namespace hydash.WebApp.Components.Account
 
             // Use a lock to prevent concurrent access to this block.
             // This ensures only one thread enters this block at a time.
-            lock (_dbContextFactory)
+            //lock (_dbContextFactory)
             {
                 using (var context = _dbContextFactory.CreateDbContext())
                 {

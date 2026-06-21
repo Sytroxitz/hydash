@@ -1,4 +1,4 @@
-@using Microsoft.EntityFrameworkCore
+﻿@using Microsoft.EntityFrameworkCore
 @using System.Security.Claims
 @using hydash.WebApp.Components.Account
 @using Microsoft.AspNetCore.Components
@@ -46,10 +46,13 @@
                 <MudIcon Icon="@Icons.Material.Outlined.ManageAccounts" Size="Size.Small" />
                 <span>Profile</span>
             </a>
-            <a class="user-menu-item" href="/admin">
-                <MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" />
-                <span>Dashboard</span>
-            </a>
+            @if (_isAdmin)
+            {
+                <a class="user-menu-item" href="/admin">
+                    <MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" />
+                    <span>Admin Panel</span>
+                </a>
+            }
             <a class="user-menu-item" href="#">
                 <MudIcon Icon="@Icons.Material.Outlined.HelpOutline" Size="Size.Small" />
                 <span>Help</span>
@@ -71,6 +74,7 @@
     private ApplicationUser? user;
     private string? roleName;
     private string? roleColor;
+    private bool _isAdmin;
 
     private string AvatarSrc =>
         (user?.AvatarImage is { Length: > 0 } img)
@@ -91,6 +95,9 @@
         {
             return;
         }
+
+        // Matches the [Authorize(Roles = "Administrator")] guard on the admin pages.
+        _isAdmin = claimsPrincipal.IsInRole("Administrator");
 
         var userId = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userId is null)

@@ -1,22 +1,57 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
-@layout NavAppBar
+@inject NavigationManager NavigationManager
 
-@namespace hydash.WebApp.Components.Layout
-<!--
+@using Microsoft.AspNetCore.Components.Forms
+@using hydash.WebApp.Components.Account
+@using hydash.WebApp.Theme
 
--->
+<MudThemeProvider Theme="HydashTheme.Default" IsDarkMode="true" @rendermode="InteractiveServer" />
+<MudPopoverProvider @rendermode="InteractiveServer" />
+<MudDialogProvider @rendermode="InteractiveServer" />
+<MudSnackbarProvider @rendermode="InteractiveServer" />
 
-<MudLayout>
-    <MudDrawer @bind-Open="@_open">
-        <MudDrawerContainer>
-            <NavMenu />
-        </MudDrawerContainer>
-    </MudDrawer>
-    <MudMainContent>
-        @Body
-    </MudMainContent>
-</MudLayout>
+<div class="admin-layout">
+    @* Pure-CSS drawer toggle: works without circuit interactivity, so it
+       functions even though this layout is statically rendered. *@
+    <input type="checkbox" id="admin-nav-toggle" class="admin-nav-toggle" hidden />
+
+    <header class="admin-topbar hy-appbar">
+        <label for="admin-nav-toggle" class="admin-burger" aria-label="Toggle navigation">
+            <MudIcon Icon="@Icons.Material.Filled.Menu" />
+        </label>
+        <a href="/" class="hy-brand">
+            <span class="hy-brand-dot"></span>
+            <span class="hy-brand-text">HYDASH</span>
+        </a>
+        <span class="admin-badge">Admin</span>
+        <div class="admin-topbar-spacer"></div>
+        <UserDropDown />
+        @* Statically-rendered logout form so AntiforgeryToken emits a valid
+           token. The logout button inside UserDropDown submits it via form="". *@
+        <form id="hydash-logout-form" action="Account/Logout" method="post" style="display:none;">
+            <AntiforgeryToken />
+            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+        </form>
+    </header>
+
+    <div class="admin-shell">
+        <aside class="admin-sidebar hy-glass">
+            <div class="admin-sidebar-head">
+                <span class="admin-sidebar-eyebrow">Control center</span>
+                <span class="admin-sidebar-title">Admin Panel</span>
+            </div>
+            <AdminNavMenu />
+        </aside>
+        <main class="admin-main">
+            <MudContainer MaxWidth="MaxWidth.ExtraExtraLarge" Class="pa-0 admin-content">
+                @Body
+            </MudContainer>
+        </main>
+    </div>
+
+    <label for="admin-nav-toggle" class="admin-scrim" aria-hidden="true"></label>
+</div>
 
 <div id="blazor-error-ui">
     An unhandled error has occurred.
@@ -25,11 +60,10 @@
 </div>
 
 @code {
+    private string? currentUrl;
 
-    public bool _open { get; set; } = true;
-
-    void DrawerToggle()
+    protected override void OnInitialized()
     {
-        _open = !_open;
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
     }
 }

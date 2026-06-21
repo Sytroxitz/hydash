@@ -362,5 +362,9 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /hydash/Migrations
-/hydash/appsettings.json
-/hydash/appsettings.json
+
+# App configuration: the real files stay local (they may contain secrets such
+# as connection strings). Only the sanitized appsettings.Template.json is tracked.
+appsettings.json
+appsettings.*.json
+!appsettings.Template.json
